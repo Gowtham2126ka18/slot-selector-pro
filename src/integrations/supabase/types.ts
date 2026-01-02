@@ -14,16 +14,184 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      departments: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          year: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          year: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          year?: string
+        }
+        Relationships: []
+      }
+      slots: {
+        Row: {
+          capacity: number
+          created_at: string
+          day: string
+          filled: number
+          id: string
+          slot_number: number
+          time_range: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          day: string
+          filled?: number
+          id: string
+          slot_number: number
+          time_range: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          day?: string
+          filled?: number
+          id?: string
+          slot_number?: number
+          time_range?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      submissions: {
+        Row: {
+          department_id: string
+          id: string
+          is_locked: boolean
+          slot1_id: string
+          slot2_id: string
+          slot3_id: string
+          submitted_at: string
+          submitted_by: string | null
+        }
+        Insert: {
+          department_id: string
+          id?: string
+          is_locked?: boolean
+          slot1_id: string
+          slot2_id: string
+          slot3_id: string
+          submitted_at?: string
+          submitted_by?: string | null
+        }
+        Update: {
+          department_id?: string
+          id?: string
+          is_locked?: boolean
+          slot1_id?: string
+          slot2_id?: string
+          slot3_id?: string
+          submitted_at?: string
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: true
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_slot1_id_fkey"
+            columns: ["slot1_id"]
+            isOneToOne: false
+            referencedRelation: "slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_slot2_id_fkey"
+            columns: ["slot2_id"]
+            isOneToOne: false
+            referencedRelation: "slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_slot3_id_fkey"
+            columns: ["slot3_id"]
+            isOneToOne: false
+            referencedRelation: "slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_settings: {
+        Row: {
+          id: string
+          is_system_locked: boolean
+          lock_message: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_system_locked?: boolean
+          lock_message?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_system_locked?: boolean
+          lock_message?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      clear_all_submissions: { Args: never; Returns: undefined }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      reset_all_slots: { Args: never; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "department_head"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +318,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "department_head"],
+    },
   },
 } as const

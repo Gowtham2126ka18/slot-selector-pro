@@ -1,1 +1,7 @@
 project_id = "hqydhaltwyqgcmqrfrvv"
+
+[functions.seed-data]
+verify_jwt = false
+
+[functions.create-department-head]
+verify_jwt = false

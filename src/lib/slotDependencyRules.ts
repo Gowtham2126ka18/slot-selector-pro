@@ -1,205 +1,138 @@
-// Enhanced Slot Dependency Rules
-// Based on the conditional mapping requirements
+// Slot Dependency Rules - Alternate Day Logic
+// Each slot selection must be on an alternate day (skip at least 1 day)
 
-import { Day, SlotNumber } from './slotData';
+import { Day, SlotNumber, DAYS } from './slotData';
 
 export interface SlotId {
   day: Day;
   slotNumber: SlotNumber;
 }
 
-export interface ConditionalDependencyRule {
-  slot1: string;
-  slot2Options: string[];
-  // Slot 3 depends on which Slot 2 was chosen
-  slot3BySlot2: Record<string, string>;
-}
-
-// NEW RULE: Monday Slot 1 → Wednesday Slot 2/3 → Friday (dependent on Slot 2)
-// If Slot1 = Monday-1:
-//   Slot2 ∈ {Wednesday-2, Wednesday-3}
-//   If Slot2 = Wednesday-2 → Slot3 = Friday-3
-//   If Slot2 = Wednesday-3 → Slot3 = Friday-2
-export const CONDITIONAL_DEPENDENCY_RULES: ConditionalDependencyRule[] = [
-  {
-    slot1: 'Monday-1',
-    slot2Options: ['Wednesday-2', 'Wednesday-3'],
-    slot3BySlot2: {
-      'Wednesday-2': 'Friday-3',
-      'Wednesday-3': 'Friday-2',
-    },
-  },
-  // Other slot1 selections can have their own rules
-  {
-    slot1: 'Monday-2',
-    slot2Options: ['Wednesday-1', 'Thursday-2'],
-    slot3BySlot2: {
-      'Wednesday-1': 'Saturday-1',
-      'Thursday-2': 'Saturday-2',
-    },
-  },
-  {
-    slot1: 'Monday-3',
-    slot2Options: ['Tuesday-2', 'Thursday-1'],
-    slot3BySlot2: {
-      'Tuesday-2': 'Friday-1',
-      'Thursday-1': 'Friday-2',
-    },
-  },
-  {
-    slot1: 'Tuesday-1',
-    slot2Options: ['Thursday-2', 'Thursday-3'],
-    slot3BySlot2: {
-      'Thursday-2': 'Saturday-2',
-      'Thursday-3': 'Saturday-3',
-    },
-  },
-  {
-    slot1: 'Tuesday-2',
-    slot2Options: ['Wednesday-1', 'Friday-2'],
-    slot3BySlot2: {
-      'Wednesday-1': 'Saturday-1',
-      'Friday-2': 'Saturday-1',
-    },
-  },
-  {
-    slot1: 'Tuesday-3',
-    slot2Options: ['Thursday-1', 'Friday-1'],
-    slot3BySlot2: {
-      'Thursday-1': 'Saturday-2',
-      'Friday-1': 'Saturday-3',
-    },
-  },
-  {
-    slot1: 'Wednesday-1',
-    slot2Options: ['Friday-2', 'Friday-3'],
-    slot3BySlot2: {
-      'Friday-2': 'Saturday-1',
-      'Friday-3': 'Saturday-2',
-    },
-  },
-  {
-    slot1: 'Wednesday-2',
-    slot2Options: ['Thursday-1', 'Thursday-3'],
-    slot3BySlot2: {
-      'Thursday-1': 'Saturday-3',
-      'Thursday-3': 'Saturday-3',
-    },
-  },
-  {
-    slot1: 'Wednesday-3',
-    slot2Options: ['Friday-1', 'Friday-2'],
-    slot3BySlot2: {
-      'Friday-1': 'Saturday-1',
-      'Friday-2': 'Saturday-1',
-    },
-  },
-  {
-    slot1: 'Thursday-1',
-    slot2Options: ['Friday-2', 'Saturday-1'],
-    slot3BySlot2: {
-      'Friday-2': 'Saturday-3',
-      'Saturday-1': 'Saturday-3',
-    },
-  },
-  {
-    slot1: 'Thursday-2',
-    slot2Options: ['Friday-1', 'Friday-3'],
-    slot3BySlot2: {
-      'Friday-1': 'Saturday-2',
-      'Friday-3': 'Saturday-2',
-    },
-  },
-  {
-    slot1: 'Thursday-3',
-    slot2Options: ['Friday-1', 'Saturday-2'],
-    slot3BySlot2: {
-      'Friday-1': 'Saturday-3',
-      'Saturday-2': 'Saturday-3',
-    },
-  },
-  {
-    slot1: 'Friday-1',
-    slot2Options: ['Saturday-2', 'Saturday-3'],
-    slot3BySlot2: {
-      'Saturday-2': 'Monday-2',
-      'Saturday-3': 'Monday-3',
-    },
-  },
-  {
-    slot1: 'Friday-2',
-    slot2Options: ['Saturday-1', 'Saturday-3'],
-    slot3BySlot2: {
-      'Saturday-1': 'Monday-1',
-      'Saturday-3': 'Tuesday-1',
-    },
-  },
-  {
-    slot1: 'Friday-3',
-    slot2Options: ['Saturday-1', 'Saturday-2'],
-    slot3BySlot2: {
-      'Saturday-1': 'Monday-2',
-      'Saturday-2': 'Tuesday-2',
-    },
-  },
-  {
-    slot1: 'Saturday-1',
-    slot2Options: ['Monday-2', 'Monday-3'],
-    slot3BySlot2: {
-      'Monday-2': 'Wednesday-1',
-      'Monday-3': 'Wednesday-2',
-    },
-  },
-  {
-    slot1: 'Saturday-2',
-    slot2Options: ['Monday-1', 'Tuesday-2'],
-    slot3BySlot2: {
-      'Monday-1': 'Thursday-1',
-      'Tuesday-2': 'Thursday-2',
-    },
-  },
-  {
-    slot1: 'Saturday-3',
-    slot2Options: ['Monday-1', 'Tuesday-1'],
-    slot3BySlot2: {
-      'Monday-1': 'Wednesday-3',
-      'Tuesday-1': 'Thursday-3',
-    },
-  },
-];
-
-/**
- * Get the dependency rule for a given Slot 1 selection
- */
-export const getConditionalDependencyRule = (slot1Id: string): ConditionalDependencyRule | undefined => {
-  return CONDITIONAL_DEPENDENCY_RULES.find((rule) => rule.slot1 === slot1Id);
+// Day index for calculating alternate days
+const DAY_INDEX: Record<Day, number> = {
+  'Monday': 0,
+  'Tuesday': 1,
+  'Wednesday': 2,
+  'Thursday': 3,
+  'Friday': 4,
+  'Saturday': 5,
 };
 
 /**
- * Get allowed Slot 2 options based on Slot 1 selection
+ * Parse a slot ID string into day and slot number
+ */
+export const parseSlotId = (slotId: string): SlotId | null => {
+  const parts = slotId.split('-');
+  if (parts.length !== 2) return null;
+  
+  const day = parts[0] as Day;
+  const slotNumber = parseInt(parts[1]) as SlotNumber;
+  
+  if (!DAYS.includes(day) || ![1, 2, 3].includes(slotNumber)) {
+    return null;
+  }
+  
+  return { day, slotNumber };
+};
+
+/**
+ * Get alternate days from a given day (skip at least 1 day)
+ * Alternate days are: current day index + 2, +4, etc. (wrapping around if needed)
+ */
+export const getAlternateDays = (fromDay: Day): Day[] => {
+  const fromIndex = DAY_INDEX[fromDay];
+  const alternateDays: Day[] = [];
+  
+  // Days that are at least 2 positions away (skipping 1 day)
+  for (let i = 0; i < DAYS.length; i++) {
+    const dayDiff = Math.abs(i - fromIndex);
+    // Consider wrapping: the minimum distance is either direct or wrapped
+    const wrappedDiff = Math.min(dayDiff, DAYS.length - dayDiff);
+    
+    // Skip at least 1 day means minimum distance of 2
+    if (wrappedDiff >= 2) {
+      alternateDays.push(DAYS[i]);
+    }
+  }
+  
+  return alternateDays;
+};
+
+/**
+ * Get all allowed slot IDs for Slot 2 based on Slot 1 selection
+ * Rule: Slot 2 must be on an alternate day from Slot 1
  */
 export const getAllowedSlot2Options = (slot1Id: string): string[] => {
-  const rule = getConditionalDependencyRule(slot1Id);
-  return rule ? rule.slot2Options : [];
+  const slot1 = parseSlotId(slot1Id);
+  if (!slot1) return [];
+  
+  const alternateDays = getAlternateDays(slot1.day);
+  const options: string[] = [];
+  
+  alternateDays.forEach((day) => {
+    ([1, 2, 3] as SlotNumber[]).forEach((slotNum) => {
+      options.push(`${day}-${slotNum}`);
+    });
+  });
+  
+  return options;
 };
 
 /**
- * Get the mandatory Slot 3 based on Slot 1 and Slot 2 selections
- * Returns undefined if no rule exists or Slot 2 is not valid
+ * Get all allowed slot IDs for Slot 3 based on Slot 1 and Slot 2 selection
+ * Rule: Slot 3 must be on an alternate day from Slot 2 AND different from Slot 1
  */
-export const getMandatorySlot3 = (slot1Id: string, slot2Id: string): string | undefined => {
-  const rule = getConditionalDependencyRule(slot1Id);
-  if (!rule) return undefined;
-  return rule.slot3BySlot2[slot2Id];
+export const getAllowedSlot3Options = (slot1Id: string, slot2Id: string): string[] => {
+  const slot1 = parseSlotId(slot1Id);
+  const slot2 = parseSlotId(slot2Id);
+  
+  if (!slot1 || !slot2) return [];
+  
+  const alternateDaysFromSlot2 = getAlternateDays(slot2.day);
+  const options: string[] = [];
+  
+  alternateDaysFromSlot2.forEach((day) => {
+    // Slot 3 day must also be different from Slot 1 day
+    if (day !== slot1.day) {
+      ([1, 2, 3] as SlotNumber[]).forEach((slotNum) => {
+        options.push(`${day}-${slotNum}`);
+      });
+    }
+  });
+  
+  return options;
 };
 
 /**
- * Get all allowed Slot 3 options based on Slot 1 (for display purposes when Slot 2 not yet selected)
+ * Get all possible Slot 3 options based only on Slot 1 (for display when Slot 2 not yet selected)
  */
 export const getAllPossibleSlot3Options = (slot1Id: string): string[] => {
-  const rule = getConditionalDependencyRule(slot1Id);
-  if (!rule) return [];
-  return Object.values(rule.slot3BySlot2);
+  const slot1 = parseSlotId(slot1Id);
+  if (!slot1) return [];
+  
+  // Any day that's not the same as Slot 1 and could potentially be alternate from some Slot 2
+  const options: string[] = [];
+  
+  DAYS.forEach((day) => {
+    if (day !== slot1.day) {
+      ([1, 2, 3] as SlotNumber[]).forEach((slotNum) => {
+        options.push(`${day}-${slotNum}`);
+      });
+    }
+  });
+  
+  return options;
+};
+
+/**
+ * Check if a day is an alternate day from another
+ */
+export const isAlternateDay = (day1: Day, day2: Day): boolean => {
+  const index1 = DAY_INDEX[day1];
+  const index2 = DAY_INDEX[day2];
+  const dayDiff = Math.abs(index1 - index2);
+  const wrappedDiff = Math.min(dayDiff, DAYS.length - dayDiff);
+  return wrappedDiff >= 2;
 };
 
 /**
@@ -210,26 +143,68 @@ export const validateSlotSelection = (
   slot2Id: string,
   slot3Id: string
 ): { valid: boolean; error?: string } => {
-  const rule = getConditionalDependencyRule(slot1Id);
+  const slot1 = parseSlotId(slot1Id);
+  const slot2 = parseSlotId(slot2Id);
+  const slot3 = parseSlotId(slot3Id);
   
-  if (!rule) {
-    return { valid: false, error: `No dependency rule found for Slot 1: ${slot1Id}` };
+  if (!slot1 || !slot2 || !slot3) {
+    return { valid: false, error: 'Invalid slot format' };
   }
   
-  if (!rule.slot2Options.includes(slot2Id)) {
+  // Check Slot 2 is alternate from Slot 1
+  if (!isAlternateDay(slot1.day, slot2.day)) {
     return { 
       valid: false, 
-      error: `Invalid Slot 2 selection. For ${slot1Id}, Slot 2 must be one of: ${rule.slot2Options.join(', ')}` 
+      error: `Slot 2 (${slot2.day}) must be on an alternate day from Slot 1 (${slot1.day}). Skip at least 1 day.` 
     };
   }
   
-  const mandatorySlot3 = rule.slot3BySlot2[slot2Id];
-  if (slot3Id !== mandatorySlot3) {
+  // Check Slot 3 is alternate from Slot 2
+  if (!isAlternateDay(slot2.day, slot3.day)) {
     return { 
       valid: false, 
-      error: `Invalid Slot 3 selection. For ${slot1Id} → ${slot2Id}, Slot 3 must be: ${mandatorySlot3}` 
+      error: `Slot 3 (${slot3.day}) must be on an alternate day from Slot 2 (${slot2.day}). Skip at least 1 day.` 
+    };
+  }
+  
+  // Check Slot 3 is different from Slot 1
+  if (slot1.day === slot3.day) {
+    return { 
+      valid: false, 
+      error: `Slot 3 cannot be on the same day as Slot 1 (${slot1.day})` 
     };
   }
   
   return { valid: true };
+};
+
+// Legacy compatibility - kept for backward compatibility if needed elsewhere
+export interface ConditionalDependencyRule {
+  slot1: string;
+  slot2Options: string[];
+  slot3BySlot2: Record<string, string>;
+}
+
+export const getConditionalDependencyRule = (slot1Id: string): ConditionalDependencyRule | undefined => {
+  const slot2Options = getAllowedSlot2Options(slot1Id);
+  if (slot2Options.length === 0) return undefined;
+  
+  const slot3BySlot2: Record<string, string> = {};
+  slot2Options.forEach((slot2) => {
+    const slot3Options = getAllowedSlot3Options(slot1Id, slot2);
+    if (slot3Options.length > 0) {
+      slot3BySlot2[slot2] = slot3Options[0]; // Default to first option
+    }
+  });
+  
+  return {
+    slot1: slot1Id,
+    slot2Options,
+    slot3BySlot2,
+  };
+};
+
+export const getMandatorySlot3 = (slot1Id: string, slot2Id: string): string | undefined => {
+  const options = getAllowedSlot3Options(slot1Id, slot2Id);
+  return options.length > 0 ? options[0] : undefined;
 };

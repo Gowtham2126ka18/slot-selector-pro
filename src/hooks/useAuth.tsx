@@ -6,6 +6,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isAdmin: boolean;
+  isDepartmentHead: boolean;
+  departmentId: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -18,6 +20,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDepartmentHead, setIsDepartmentHead] = useState(false);
+  const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const checkAdminRole = async (userId: string) => {
@@ -35,6 +39,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return !!data;
   };
 
+  const checkDepartmentHeadRole = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('department_head_credentials')
+      .select('department_id, is_enabled')
+      .eq('user_id', userId)
+      .eq('is_enabled', true)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking department head role:', error);
+      return { isDH: false, deptId: null };
+    }
+    return { isDH: !!data, deptId: data?.department_id || null };
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -42,29 +61,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Defer admin check with setTimeout to avoid deadlock
+        // Defer role checks with setTimeout to avoid deadlock
         if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id).then(setIsAdmin);
+          setTimeout(async () => {
+            const adminResult = await checkAdminRole(session.user.id);
+            setIsAdmin(adminResult);
+            
+            if (!adminResult) {
+              const dhResult = await checkDepartmentHeadRole(session.user.id);
+              setIsDepartmentHead(dhResult.isDH);
+              setDepartmentId(dhResult.deptId);
+            } else {
+              setIsDepartmentHead(false);
+              setDepartmentId(null);
+            }
           }, 0);
         } else {
           setIsAdmin(false);
+          setIsDepartmentHead(false);
+          setDepartmentId(null);
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
-        checkAdminRole(session.user.id).then((result) => {
-          setIsAdmin(result);
-          setLoading(false);
-        });
-      } else {
-        setLoading(false);
+        const adminResult = await checkAdminRole(session.user.id);
+        setIsAdmin(adminResult);
+        
+        if (!adminResult) {
+          const dhResult = await checkDepartmentHeadRole(session.user.id);
+          setIsDepartmentHead(dhResult.isDH);
+          setDepartmentId(dhResult.deptId);
+        }
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -93,6 +128,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    setIsDepartmentHead(false);
+    setDepartmentId(null);
   };
 
   return (
@@ -101,6 +138,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         session,
         isAdmin,
+        isDepartmentHead,
+        departmentId,
         loading,
         signIn,
         signUp,

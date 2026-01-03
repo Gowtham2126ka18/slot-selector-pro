@@ -12,10 +12,13 @@ import {
   SlotSelection,
   TimeSlot,
   generateSlots,
-  getDependencyRule,
   getSlotStatus,
-  DAYS,
 } from '@/lib/slotData';
+import {
+  getConditionalDependencyRule,
+  getAllowedSlot2Options,
+  getMandatorySlot3,
+} from '@/lib/slotDependencyRules';
 import { ArrowLeft, ArrowRight, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -52,7 +55,7 @@ const SelectSlot = () => {
     return completed;
   }, [selectedYear, selectedDepartment, selections]);
 
-  // Get allowed slots based on dependency rules
+  // Get allowed slots based on NEW conditional dependency rules
   const allowedSlots = useMemo(() => {
     if (currentStep === 2) {
       // All available slots for Slot 1
@@ -62,27 +65,27 @@ const SelectSlot = () => {
     }
 
     if (currentStep === 3 && selections.slot1) {
-      const rule = getDependencyRule(selections.slot1);
-      if (rule) {
-        return rule.allowedSlot2.filter((slotId) => {
-          const slot = slots.find((s) => `${s.day}-${s.slotNumber}` === slotId);
-          return slot && getSlotStatus(slot) !== 'full';
-        });
-      }
+      // Get allowed Slot 2 options based on Slot 1
+      const allowed = getAllowedSlot2Options(selections.slot1);
+      return allowed.filter((slotId) => {
+        const slot = slots.find((s) => `${s.day}-${s.slotNumber}` === slotId);
+        return slot && getSlotStatus(slot) !== 'full';
+      });
     }
 
-    if (currentStep === 4 && selections.slot1) {
-      const rule = getDependencyRule(selections.slot1);
-      if (rule) {
-        return rule.allowedSlot3.filter((slotId) => {
-          const slot = slots.find((s) => `${s.day}-${s.slotNumber}` === slotId);
-          return slot && getSlotStatus(slot) !== 'full';
-        });
+    if (currentStep === 4 && selections.slot1 && selections.slot2) {
+      // Slot 3 is MANDATORY based on Slot 1 and Slot 2
+      const mandatorySlot3 = getMandatorySlot3(selections.slot1, selections.slot2);
+      if (mandatorySlot3) {
+        const slot = slots.find((s) => `${s.day}-${s.slotNumber}` === mandatorySlot3);
+        if (slot && getSlotStatus(slot) !== 'full') {
+          return [mandatorySlot3];
+        }
       }
     }
 
     return [];
-  }, [currentStep, selections.slot1, slots]);
+  }, [currentStep, selections.slot1, selections.slot2, slots]);
 
   // Get disabled slots (not in allowed list)
   const disabledSlots = useMemo(() => {
@@ -101,7 +104,9 @@ const SelectSlot = () => {
     if (currentStep === 2) {
       setSelections({ slot1: slotId, slot2: null, slot3: null });
     } else if (currentStep === 3) {
-      setSelections((prev) => ({ ...prev, slot2: slotId, slot3: null }));
+      // When selecting Slot 2, auto-determine the mandatory Slot 3
+      const mandatorySlot3 = getMandatorySlot3(selections.slot1!, slotId);
+      setSelections((prev) => ({ ...prev, slot2: slotId, slot3: mandatorySlot3 || null }));
     } else if (currentStep === 4) {
       setSelections((prev) => ({ ...prev, slot3: slotId }));
     }
@@ -211,18 +216,29 @@ const SelectSlot = () => {
                     <p className="mt-1 text-sm text-muted-foreground">
                       {currentStep === 2
                         ? 'Choose any available slot to begin'
-                        : 'Based on your first selection, only highlighted slots are available'}
+                        : currentStep === 3
+                        ? 'Based on your first selection, only highlighted slots are available'
+                        : 'Your third slot is determined by your previous selections'}
                     </p>
                   </div>
                 </div>
 
-                {currentStep > 2 && (
+                {currentStep === 3 && selections.slot1 && (
                   <Alert className="mb-6 border-warning/30 bg-warning/5">
                     <AlertCircle className="h-4 w-4 text-warning" />
                     <AlertDescription className="text-sm">
-                      <strong>Dependency Rule:</strong> Your first slot selection
-                      determines which slots are available. Highlighted slots are
-                      valid choices.
+                      <strong>Dependency Rule:</strong> You selected {selections.slot1} for Slot 1.
+                      Your Slot 2 must be one of the highlighted options.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {currentStep === 4 && selections.slot1 && selections.slot2 && (
+                  <Alert className="mb-6 border-accent/30 bg-accent/5">
+                    <CheckCircle2 className="h-4 w-4 text-accent" />
+                    <AlertDescription className="text-sm">
+                      <strong>Mandatory Selection:</strong> Based on {selections.slot1} → {selections.slot2},
+                      your Slot 3 must be: <strong>{getMandatorySlot3(selections.slot1, selections.slot2)}</strong>
                     </AlertDescription>
                   </Alert>
                 )}

@@ -19,9 +19,8 @@ import {
   Day,
 } from '@/lib/slotData';
 import {
-  getConditionalDependencyRule,
   getAllowedSlot2Options,
-  getMandatorySlot3,
+  getAllowedSlot3Options,
   validateSlotSelection,
 } from '@/lib/slotDependencyRules';
 import {
@@ -185,13 +184,11 @@ const DepartmentHeadDashboard = () => {
     }
 
     if (currentStep === 3 && selections.slot1 && selections.slot2) {
-      const mandatorySlot3 = getMandatorySlot3(selections.slot1, selections.slot2);
-      if (mandatorySlot3) {
-        const slot = slots.find((s) => `${s.day}-${s.slotNumber}` === mandatorySlot3);
-        if (slot && slot.capacity - slot.filled > 0) {
-          return [mandatorySlot3];
-        }
-      }
+      const allowed = getAllowedSlot3Options(selections.slot1, selections.slot2);
+      return allowed.filter((slotId) => {
+        const slot = slots.find((s) => `${s.day}-${s.slotNumber}` === slotId);
+        return slot && slot.capacity - slot.filled > 0;
+      });
     }
 
     return [];
@@ -222,9 +219,8 @@ const DepartmentHeadDashboard = () => {
     if (currentStep === 1) {
       setSelections({ slot1: slotId, slot2: null, slot3: null });
     } else if (currentStep === 2) {
-      // When selecting slot 2, auto-determine slot 3
-      const mandatorySlot3 = getMandatorySlot3(selections.slot1!, slotId);
-      setSelections((prev) => ({ ...prev, slot2: slotId, slot3: mandatorySlot3 || null }));
+      // Reset slot 3 when changing slot 2
+      setSelections((prev) => ({ ...prev, slot2: slotId, slot3: null }));
     } else if (currentStep === 3) {
       setSelections((prev) => ({ ...prev, slot3: slotId }));
     }
@@ -488,8 +484,8 @@ const DepartmentHeadDashboard = () => {
                   <Alert className="mb-6 border-accent/30 bg-accent/5">
                     <CheckCircle2 className="h-4 w-4 text-accent" />
                     <AlertDescription className="text-sm">
-                      <strong>Mandatory Selection:</strong> Based on {selections.slot1} → {selections.slot2}, 
-                      your Slot 3 must be: <strong>{getMandatorySlot3(selections.slot1, selections.slot2)}</strong>
+                      <strong>Alternate Day Rule:</strong> Select a slot that is on an alternate day from {selections.slot2.split('-')[0]} 
+                      (skip at least 1 day) and different from {selections.slot1.split('-')[0]}.
                     </AlertDescription>
                   </Alert>
                 )}

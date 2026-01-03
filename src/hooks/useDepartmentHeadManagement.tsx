@@ -78,67 +78,39 @@ export const useDepartmentHeadManagement = () => {
 
   const createDepartmentHead = async (data: CreateDepartmentHeadData): Promise<boolean> => {
     try {
-      // First, check if this department already has a head assigned
-      const { data: existingHead } = await supabase
-        .from('department_head_credentials')
-        .select('id')
-        .eq('department_id', data.department_id)
-        .maybeSingle();
-
-      if (existingHead) {
+      // Get current session for authorization
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
         toast({
-          title: 'Department Already Assigned',
-          description: 'This department already has a department head assigned.',
+          title: 'Authentication Required',
+          description: 'Please log in again to create department heads.',
           variant: 'destructive',
         });
         return false;
       }
 
-      // Create the user account via auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
+      // Call edge function to create user with admin privileges
+      const { data: result, error } = await supabase.functions.invoke('create-department-head', {
+        body: {
+          email: data.email,
+          password: data.password,
+          department_id: data.department_id,
         },
       });
 
-      if (authError || !authData.user) {
+      if (error) {
         toast({
-          title: 'Error Creating User',
-          description: authError?.message || 'Failed to create user account',
+          title: 'Error Creating Department Head',
+          description: error.message || 'Failed to create department head',
           variant: 'destructive',
         });
         return false;
       }
 
-      // Create user_roles entry for department_head
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: 'department_head',
-          department_id: data.department_id,
-        });
-
-      if (roleError) {
-        console.error('Error creating user role:', roleError);
-        // Continue anyway, we'll create the credentials
-      }
-
-      // Create department_head_credentials entry
-      const { error: credError } = await supabase
-        .from('department_head_credentials')
-        .insert({
-          user_id: authData.user.id,
-          department_id: data.department_id,
-          is_enabled: true,
-        });
-
-      if (credError) {
+      if (result?.error) {
         toast({
-          title: 'Error Creating Credentials',
-          description: credError.message,
+          title: 'Error',
+          description: result.error,
           variant: 'destructive',
         });
         return false;

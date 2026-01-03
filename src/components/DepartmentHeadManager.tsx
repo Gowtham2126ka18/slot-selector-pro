@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDepartmentHeadManagement } from '@/hooks/useDepartmentHeadManagement';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { UserPlus, Trash2, RefreshCw, Users, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Trash2, RefreshCw, Users, Eye, EyeOff, Settings } from 'lucide-react';
 import { z } from 'zod';
 
 const createDepartmentHeadSchema = z.object({
@@ -51,8 +52,10 @@ const createDepartmentHeadSchema = z.object({
 });
 
 const DepartmentHeadManager = () => {
+  const navigate = useNavigate();
   const {
     departmentHeads,
+    departments,
     loading,
     createDepartmentHead,
     toggleDepartmentHeadStatus,
@@ -73,6 +76,8 @@ const DepartmentHeadManager = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const unassignedDepartments = getUnassignedDepartments();
+  const hasDepartments = departments.length > 0;
+  const canAddDepartmentHead = hasDepartments && unassignedDepartments.length > 0;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -138,9 +143,21 @@ const DepartmentHeadManager = () => {
               <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
+
+            {!hasDepartments && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/setup')}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Run Setup
+              </Button>
+            )}
+
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" disabled={unassignedDepartments.length === 0}>
+                <Button size="sm" disabled={!canAddDepartmentHead}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   Add Department Head
                 </Button>
@@ -319,10 +336,20 @@ const DepartmentHeadManager = () => {
           </Table>
         )}
 
-        {unassignedDepartments.length === 0 && departmentHeads.length > 0 && (
-          <div className="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
-            <p className="text-accent">All departments have been assigned a department head.</p>
+        {!hasDepartments ? (
+          <div className="mt-4 rounded-lg border border-warning/50 bg-warning/10 p-3 text-sm">
+            <p className="font-medium text-warning">No departments found.</p>
+            <p className="mt-1 text-muted-foreground">
+              Run setup to seed departments and slots, then you can create department head login credentials.
+            </p>
           </div>
+        ) : (
+          unassignedDepartments.length === 0 &&
+          departmentHeads.length > 0 && (
+            <div className="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
+              <p className="text-accent">All departments have been assigned a department head.</p>
+            </div>
+          )
         )}
       </CardContent>
     </Card>

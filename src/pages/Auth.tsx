@@ -8,11 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, Mail, Shield, ArrowLeft, Building2 } from 'lucide-react';
+import { Lock, User, Shield, ArrowLeft, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const authSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
@@ -21,8 +21,8 @@ const Auth = () => {
   const { user, isAdmin, loading } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [formData, setFormData] = useState({ username: '', password: '' });
+  const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
 
   // Check user role and redirect appropriately
   useEffect(() => {
@@ -65,9 +65,9 @@ const Auth = () => {
       return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const fieldErrors: { email?: string; password?: string } = {};
+        const fieldErrors: { username?: string; password?: string } = {};
         error.errors.forEach((err) => {
-          if (err.path[0] === 'email') fieldErrors.email = err.message;
+          if (err.path[0] === 'username') fieldErrors.username = err.message;
           if (err.path[0] === 'password') fieldErrors.password = err.message;
         });
         setErrors(fieldErrors);
@@ -82,8 +82,11 @@ const Auth = () => {
 
     setIsSubmitting(true);
     
+    // Convert username to email format for Supabase auth
+    const email = `${formData.username.toLowerCase().trim()}@admin.local`;
+    
     const { error } = await supabase.auth.signInWithPassword({
-      email: formData.email,
+      email,
       password: formData.password,
     });
 
@@ -93,7 +96,7 @@ const Auth = () => {
       toast({
         title: 'Sign in failed',
         description: error.message === 'Invalid login credentials' 
-          ? 'Invalid email or password. Please try again.'
+          ? 'Invalid username or password. Please try again.'
           : error.message,
         variant: 'destructive',
       });
@@ -144,20 +147,20 @@ const Auth = () => {
         <CardContent>
           <form onSubmit={handleSignIn} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="signin-email">Email</Label>
+              <Label htmlFor="signin-username">Username</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="signin-email"
-                  type="email"
-                  placeholder="your.email@example.com"
+                  id="signin-username"
+                  type="text"
+                  placeholder="Enter your username"
                   className="pl-10"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 />
               </div>
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email}</p>
+              {errors.username && (
+                <p className="text-xs text-destructive">{errors.username}</p>
               )}
             </div>
 

@@ -74,8 +74,8 @@ const Index = () => {
                 size="lg"
                 className="gap-2 bg-accent text-accent-foreground shadow-elevated hover:bg-accent/90"
               >
-                <Link to="/select-slot">
-                  Select Your Slots
+                <Link to="/auth">
+                  Login to Portal
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -85,7 +85,7 @@ const Index = () => {
                 size="lg"
                 className="border-primary-foreground/20 bg-transparent text-primary-foreground hover:bg-primary-foreground/10"
               >
-                <Link to="/admin">View Dashboard</Link>
+                <Link to="/auth">Admin Dashboard</Link>
               </Button>
             </div>
           </div>

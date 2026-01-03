@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSlotManagement } from '@/hooks/useSlotManagement';
 import Header from '@/components/Header';
+import DepartmentHeadManager from '@/components/DepartmentHeadManager';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -47,6 +48,7 @@ import {
   LogOut,
   Shield,
   RefreshCw,
+  UserCog,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
@@ -69,8 +71,11 @@ const Admin = () => {
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
+    } else if (!authLoading && user && !isAdmin) {
+      // Non-admin users should be redirected
+      navigate('/auth');
     }
-  }, [user, authLoading, navigate]);
+  }, [user, isAdmin, authLoading, navigate]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -366,6 +371,10 @@ const Admin = () => {
               <Users className="h-4 w-4" />
               Submissions ({submissions.length})
             </TabsTrigger>
+            <TabsTrigger value="department-heads" className="gap-2">
+              <UserCog className="h-4 w-4" />
+              Department Heads
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="animate-fade-in">
@@ -514,6 +523,10 @@ const Admin = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="department-heads" className="animate-fade-in">
+            <DepartmentHeadManager />
           </TabsContent>
         </Tabs>
       </main>

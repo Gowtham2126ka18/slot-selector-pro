@@ -82,13 +82,28 @@ const Auth = () => {
 
     setIsSubmitting(true);
     
-    // Convert username to email format for Supabase auth
-    const email = `${formData.username.toLowerCase().trim()}@admin.local`;
+    const usernameOrEmail = formData.username.toLowerCase().trim();
     
-    const { error } = await supabase.auth.signInWithPassword({
+    // If it looks like an email, use it directly; otherwise append @admin.local
+    const email = usernameOrEmail.includes('@') 
+      ? usernameOrEmail 
+      : `${usernameOrEmail}@admin.local`;
+    
+    let { error } = await supabase.auth.signInWithPassword({
       email,
       password: formData.password,
     });
+
+    // If @admin.local fails, try @gmail.com as fallback for existing accounts
+    if (error && !usernameOrEmail.includes('@')) {
+      const fallbackResult = await supabase.auth.signInWithPassword({
+        email: `${usernameOrEmail}@gmail.com`,
+        password: formData.password,
+      });
+      if (!fallbackResult.error) {
+        error = null;
+      }
+    }
 
     setIsSubmitting(false);
 

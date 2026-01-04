@@ -7,9 +7,10 @@ interface SelectionSummaryProps {
   slots: TimeSlot[];
   department?: string | null;
   year?: string | null;
+  section?: string | null;
 }
 
-const SelectionSummary = ({ selections, slots, department, year }: SelectionSummaryProps) => {
+const SelectionSummary = ({ selections, slots, department, year, section }: SelectionSummaryProps) => {
   const getSlotDetails = (slotId: string | null) => {
     if (!slotId) return null;
     return slots.find((s) => `${s.day}-${s.slotNumber}` === slotId);
@@ -35,12 +36,18 @@ const SelectionSummary = ({ selections, slots, department, year }: SelectionSumm
         </span>
       </div>
 
-      {(department || year) && (
+      {(department || year || section) && (
         <div className="mb-4 rounded-lg bg-muted/50 p-3">
           <p className="text-sm text-muted-foreground">
-            {year && <span className="font-medium text-foreground">{year} Year</span>}
-            {year && department && ' • '}
+            {year && <span className="font-medium text-foreground">{year}</span>}
+            {year && (department || section) && ' • '}
             {department && <span className="font-medium text-foreground">{department}</span>}
+            {section && (
+              <>
+                {department && ' → '}
+                <span className="font-medium text-foreground">{section}</span>
+              </>
+            )}
           </p>
         </div>
       )}

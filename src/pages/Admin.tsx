@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSlotManagement } from '@/hooks/useSlotManagement';
 import Header from '@/components/Header';
 import DepartmentHeadManager from '@/components/DepartmentHeadManager';
+import SectionManager from '@/components/admin/SectionManager';
+import SlotRulesManager from '@/components/admin/SlotRulesManager';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -49,6 +51,8 @@ import {
   Shield,
   RefreshCw,
   UserCog,
+  Layers,
+  GitBranch,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
@@ -360,7 +364,6 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="bg-muted">
             <TabsTrigger value="overview" className="gap-2">
@@ -373,7 +376,15 @@ const Admin = () => {
             </TabsTrigger>
             <TabsTrigger value="department-heads" className="gap-2">
               <UserCog className="h-4 w-4" />
-              Department Heads
+              Dept Heads
+            </TabsTrigger>
+            <TabsTrigger value="sections" className="gap-2">
+              <Layers className="h-4 w-4" />
+              Sections
+            </TabsTrigger>
+            <TabsTrigger value="rules" className="gap-2">
+              <GitBranch className="h-4 w-4" />
+              Slot Rules
             </TabsTrigger>
           </TabsList>
 
@@ -527,6 +538,14 @@ const Admin = () => {
 
           <TabsContent value="department-heads" className="animate-fade-in">
             <DepartmentHeadManager />
+          </TabsContent>
+
+          <TabsContent value="sections" className="animate-fade-in">
+            <SectionManager />
+          </TabsContent>
+
+          <TabsContent value="rules" className="animate-fade-in">
+            <SlotRulesManager />
           </TabsContent>
         </Tabs>
       </main>

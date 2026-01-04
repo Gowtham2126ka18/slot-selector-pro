@@ -103,6 +103,71 @@ export type Database = {
         }
         Relationships: []
       }
+      sections: {
+        Row: {
+          created_at: string
+          department_id: string
+          id: string
+          name: string
+          year: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          id?: string
+          name: string
+          year: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          id?: string
+          name?: string
+          year?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slot_dependency_rules: {
+        Row: {
+          created_at: string
+          id: string
+          slot1_day: string
+          slot1_number: number
+          slot2_day: string
+          slot2_number: number
+          slot3_day: string
+          slot3_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          slot1_day: string
+          slot1_number: number
+          slot2_day: string
+          slot2_number: number
+          slot3_day: string
+          slot3_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          slot1_day?: string
+          slot1_number?: number
+          slot2_day?: string
+          slot2_number?: number
+          slot3_day?: string
+          slot3_number?: number
+        }
+        Relationships: []
+      }
       slots: {
         Row: {
           capacity: number
@@ -141,6 +206,7 @@ export type Database = {
           department_id: string
           id: string
           is_locked: boolean
+          section_id: string | null
           slot1_id: string
           slot2_id: string
           slot3_id: string
@@ -151,6 +217,7 @@ export type Database = {
           department_id: string
           id?: string
           is_locked?: boolean
+          section_id?: string | null
           slot1_id: string
           slot2_id: string
           slot3_id: string
@@ -161,6 +228,7 @@ export type Database = {
           department_id?: string
           id?: string
           is_locked?: boolean
+          section_id?: string | null
           slot1_id?: string
           slot2_id?: string
           slot3_id?: string
@@ -173,6 +241,13 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: true
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
@@ -281,6 +356,16 @@ export type Database = {
         Returns: string
       }
       reset_all_slots: { Args: never; Returns: undefined }
+      submit_slot_selection: {
+        Args: {
+          p_department_id: string
+          p_section_id: string
+          p_slot1_id: string
+          p_slot2_id: string
+          p_slot3_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "department_head"

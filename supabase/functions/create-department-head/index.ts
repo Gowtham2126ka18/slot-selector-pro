@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
     if (createError || !newUser.user) {
       console.error('Error creating user:', createError);
       return new Response(
-        JSON.stringify({ error: createError?.message || 'Failed to create user' }),
+        JSON.stringify({ error: 'Unable to create department head. Please check the email is valid and not already in use.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       // Try to clean up the created user
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
       return new Response(
-        JSON.stringify({ error: credError.message }),
+        JSON.stringify({ error: 'Unable to complete department head setup. Please try again.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -144,9 +144,8 @@ Deno.serve(async (req) => {
 
   } catch (error: unknown) {
     console.error('Unexpected error:', error);
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

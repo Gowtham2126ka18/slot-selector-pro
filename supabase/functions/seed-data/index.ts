@@ -39,11 +39,19 @@ serve(async (req: Request) => {
     // Get seed key from request for security
     const { seed_key } = await req.json();
     
-    // Simple security check - in production, use a more secure method
-    const expectedKey = Deno.env.get("SEED_KEY") || "sixphrase-seed-2024";
+    // Security check - requires SEED_KEY environment variable to be set
+    const expectedKey = Deno.env.get("SEED_KEY");
+    if (!expectedKey) {
+      console.error("SEED_KEY environment variable is not set");
+      return new Response(
+        JSON.stringify({ error: "Setup not configured properly" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     if (seed_key !== expectedKey) {
       return new Response(
-        JSON.stringify({ error: "Invalid seed key" }),
+        JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -85,7 +93,8 @@ serve(async (req: Request) => {
       });
 
       if (createError) {
-        results.push(`Error creating admin: ${createError.message}`);
+        console.error("Error creating admin:", createError);
+        results.push("Error creating admin user");
       } else if (newUser?.user) {
         // Add admin role
         const { error: roleError } = await supabaseAdmin
@@ -93,7 +102,8 @@ serve(async (req: Request) => {
           .insert({ user_id: newUser.user.id, role: 'admin' });
 
         if (roleError) {
-          results.push(`Error adding admin role: ${roleError.message}`);
+          console.error("Error adding admin role:", roleError);
+          results.push("Error adding admin role");
         } else {
           results.push(`Admin user created: ${adminEmail}`);
         }
@@ -120,7 +130,8 @@ serve(async (req: Request) => {
         .insert(secondYearDepts);
 
       if (insertError2) {
-        results.push(`Error seeding 2nd year departments: ${insertError2.message}`);
+        console.error("Error seeding 2nd year departments:", insertError2);
+        results.push("Error seeding 2nd year departments");
       } else {
         results.push(`Seeded ${SECOND_YEAR_DEPARTMENTS.length} 2nd year departments`);
       }
@@ -136,7 +147,8 @@ serve(async (req: Request) => {
         .insert(thirdYearDepts);
 
       if (insertError3) {
-        results.push(`Error seeding 3rd year departments: ${insertError3.message}`);
+        console.error("Error seeding 3rd year departments:", insertError3);
+        results.push("Error seeding 3rd year departments");
       } else {
         results.push(`Seeded ${THIRD_YEAR_DEPARTMENTS.length} 3rd year departments`);
       }
@@ -171,7 +183,8 @@ serve(async (req: Request) => {
         .insert(slotsToInsert);
 
       if (insertSlotsError) {
-        results.push(`Error seeding slots: ${insertSlotsError.message}`);
+        console.error("Error seeding slots:", insertSlotsError);
+        results.push("Error seeding slots");
       } else {
         results.push(`Seeded ${slotsToInsert.length} slots`);
       }
@@ -192,7 +205,8 @@ serve(async (req: Request) => {
         .insert({ id: 'main', is_system_locked: false });
 
       if (settingsError) {
-        results.push(`Error creating system settings: ${settingsError.message}`);
+        console.error("Error creating system settings:", settingsError);
+        results.push("Error creating system settings");
       } else {
         results.push("System settings created");
       }
@@ -222,9 +236,8 @@ serve(async (req: Request) => {
     );
   } catch (error: unknown) {
     console.error("Seed error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "An unexpected error occurred" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

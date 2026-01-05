@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import StepIndicator from '@/components/StepIndicator';
@@ -11,9 +11,11 @@ import {
   Year,
   SlotSelection,
   TimeSlot,
-  generateSlots,
+  SlotNumber,
+  SLOT_TIMES,
   getSlotStatus,
 } from '@/lib/slotData';
+import { supabase } from '@/integrations/supabase/client';
 import {
   getConditionalDependencyRule,
   getAllowedSlot2Options,
@@ -42,9 +44,40 @@ const SelectSlot = () => {
     slot2: null,
     slot3: null,
   });
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Generate slots with mock data
-  const slots = useMemo(() => generateSlots(), []);
+  // Fetch real slot data from database
+  useEffect(() => {
+    const fetchSlots = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('slots')
+        .select('*')
+        .order('day')
+        .order('slot_number');
+
+      if (error) {
+        console.error('Error fetching slots:', error);
+        setLoading(false);
+        return;
+      }
+
+      const mappedSlots: TimeSlot[] = (data || []).map((s) => ({
+        id: s.id,
+        day: s.day as TimeSlot['day'],
+        slotNumber: s.slot_number as SlotNumber,
+        time: SLOT_TIMES[s.slot_number as SlotNumber],
+        capacity: s.capacity,
+        filled: s.filled,
+      }));
+
+      setSlots(mappedSlots);
+      setLoading(false);
+    };
+
+    fetchSlots();
+  }, []);
 
   const completedSteps = useMemo(() => {
     const completed: number[] = [];

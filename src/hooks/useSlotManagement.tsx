@@ -202,6 +202,28 @@ export const useSlotManagement = () => {
       setLoading(false);
     };
     init();
+
+    // Subscribe to real-time slot updates
+    const channel = supabase
+      .channel('slots-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'slots'
+        },
+        (payload) => {
+          console.log('Slot update received:', payload);
+          // Refresh slots when any change occurs
+          fetchSlots();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [initializeSlots, fetchSlots, fetchSubmissions, fetchSystemSettings]);
 
   return {

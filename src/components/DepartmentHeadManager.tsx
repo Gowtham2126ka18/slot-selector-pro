@@ -5,13 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -42,13 +36,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserPlus, Trash2, RefreshCw, Users, Eye, EyeOff, Settings } from 'lucide-react';
 import { z } from 'zod';
 
 const createDepartmentHeadSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  department_id: z.string().uuid('Please select a department'),
+  department_ids: z.array(z.string().uuid()).min(1, 'Please select at least one department'),
 });
 
 const DepartmentHeadManager = () => {
@@ -68,16 +63,15 @@ const DepartmentHeadManager = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    department_id: '',
+    department_ids: [] as string[],
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const unassignedDepartments = getUnassignedDepartments();
   const hasDepartments = departments.length > 0;
-  const canAddDepartmentHead = hasDepartments && unassignedDepartments.length > 0;
+  const canAddDepartmentHead = hasDepartments && departments.length > 0;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -110,15 +104,35 @@ const DepartmentHeadManager = () => {
     if (!validateForm()) return;
 
     setIsCreating(true);
-    const success = await createDepartmentHead(formData);
+    const success = await createDepartmentHead({
+      email: formData.email,
+      password: formData.password,
+      department_ids: formData.department_ids,
+    });
     setIsCreating(false);
 
     if (success) {
       setIsDialogOpen(false);
-      setFormData({ email: '', password: '', department_id: '' });
+      setFormData({ email: '', password: '', department_ids: [] });
       setErrors({});
     }
   };
+
+  const handleDepartmentToggle = (deptId: string, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      department_ids: checked 
+        ? [...prev.department_ids, deptId]
+        : prev.department_ids.filter((id) => id !== deptId),
+    }));
+  };
+
+  // Group departments by year for better UX
+  const departmentsByYear = departments.reduce((acc, dept) => {
+    if (!acc[dept.year]) acc[dept.year] = [];
+    acc[dept.year].push(dept);
+    return acc;
+  }, {} as Record<string, typeof departments>);
 
   return (
     <Card className="shadow-card">
@@ -171,26 +185,43 @@ const DepartmentHeadManager = () => {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
-                    <Select
-                      value={formData.department_id}
-                      onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, department_id: value }))
-                      }
-                    >
-                      <SelectTrigger className={errors.department_id ? 'border-destructive' : ''}>
-                        <SelectValue placeholder="Select a department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {unassignedDepartments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name} ({dept.year} Year)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.department_id && (
-                      <p className="text-sm text-destructive">{errors.department_id}</p>
+                    <Label>Departments</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Select the departments this head can manage
+                    </p>
+                    <ScrollArea className={`h-48 rounded-md border p-3 ${errors.department_ids ? 'border-destructive' : ''}`}>
+                      {Object.entries(departmentsByYear).map(([year, depts]) => (
+                        <div key={year} className="mb-4 last:mb-0">
+                          <p className="mb-2 text-sm font-medium text-muted-foreground">{year} Year</p>
+                          <div className="space-y-2">
+                            {depts.map((dept) => (
+                              <div key={dept.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={dept.id}
+                                  checked={formData.department_ids.includes(dept.id)}
+                                  onCheckedChange={(checked) => 
+                                    handleDepartmentToggle(dept.id, checked === true)
+                                  }
+                                />
+                                <label
+                                  htmlFor={dept.id}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                >
+                                  {dept.name}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </ScrollArea>
+                    {errors.department_ids && (
+                      <p className="text-sm text-destructive">{errors.department_ids}</p>
+                    )}
+                    {formData.department_ids.length > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        {formData.department_ids.length} department(s) selected
+                      </p>
                     )}
                   </div>
 
@@ -343,14 +374,7 @@ const DepartmentHeadManager = () => {
               Run setup to seed departments and slots, then you can create department head login credentials.
             </p>
           </div>
-        ) : (
-          unassignedDepartments.length === 0 &&
-          departmentHeads.length > 0 && (
-            <div className="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm">
-              <p className="text-accent">All departments have been assigned a department head.</p>
-            </div>
-          )
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

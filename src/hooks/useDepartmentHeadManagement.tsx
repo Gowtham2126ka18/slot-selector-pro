@@ -20,7 +20,8 @@ export interface DepartmentHeadCredential {
 export interface CreateDepartmentHeadData {
   email: string;
   password: string;
-  department_id: string;
+  department_id?: string;
+  department_ids?: string[];
 }
 
 export const useDepartmentHeadManagement = () => {
@@ -95,6 +96,7 @@ export const useDepartmentHeadManagement = () => {
           email: data.email,
           password: data.password,
           department_id: data.department_id,
+          department_ids: data.department_ids,
         },
       });
 

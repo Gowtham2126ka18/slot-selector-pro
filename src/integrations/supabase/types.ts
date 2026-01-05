@@ -82,6 +82,42 @@ export type Database = {
           },
         ]
       }
+      department_head_departments: {
+        Row: {
+          created_at: string
+          credential_id: string
+          department_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          credential_id: string
+          department_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          credential_id?: string
+          department_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_head_departments_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "department_head_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_head_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           created_at: string

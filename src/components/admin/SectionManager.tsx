@@ -97,10 +97,34 @@ const SectionManager = () => {
   };
 
   const handleCreateSection = async () => {
-    if (!selectedDepartment || !sectionName.trim() || !sectionYear) {
+    const trimmedName = sectionName.trim();
+    
+    // Input validation
+    if (!selectedDepartment || !trimmedName || !sectionYear) {
       toast({
         title: 'Validation Error',
         description: 'Please fill in all fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate section name format and length
+    if (trimmedName.length > 100) {
+      toast({
+        title: 'Validation Error',
+        description: 'Section name must be 100 characters or less',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Only allow alphanumeric, spaces, and hyphens
+    const validNamePattern = /^[A-Za-z0-9 \-]+$/;
+    if (!validNamePattern.test(trimmedName)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Section name can only contain letters, numbers, spaces, and hyphens',
         variant: 'destructive',
       });
       return;
@@ -111,7 +135,7 @@ const SectionManager = () => {
     try {
       const { error } = await supabase.from('sections').insert({
         department_id: selectedDepartment,
-        name: sectionName.trim(),
+        name: trimmedName,
         year: sectionYear,
       });
 

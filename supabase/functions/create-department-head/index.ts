@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Created user:', newUser.user.id);
+    // User created successfully - no logging of sensitive IDs
 
     // Create user_roles entry
     const { error: roleError } = await supabaseAdmin
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Successfully created department head for department:', department_id);
+    // Department head created successfully
 
     return new Response(
       JSON.stringify({ 

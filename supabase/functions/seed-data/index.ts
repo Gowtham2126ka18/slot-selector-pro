@@ -61,9 +61,17 @@ serve(async (req: Request) => {
 
     const results: string[] = [];
 
+    // Generate a cryptographically secure random password
+    const generateSecurePassword = (): string => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+      const array = new Uint8Array(16);
+      crypto.getRandomValues(array);
+      return Array.from(array, byte => chars[byte % chars.length]).join('');
+    };
+
     // 1. Create initial admin user if not exists
     const adminEmail = "jainsixphrasecoordinator@admin.local";
-    const adminPassword = "Sixphrase@123";
+    const adminPassword = generateSecurePassword();
 
     // Check if admin already exists
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
@@ -192,15 +200,20 @@ serve(async (req: Request) => {
       results.push("System settings already exist");
     }
 
+    // Only return admin credentials if the user was just created
+    const adminCreatedNow = results.some(r => r.includes('Admin user created'));
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
         results,
-        admin_credentials: {
-          email: adminEmail,
-          password: "Sixphrase@123",
-          note: "Change password after first login"
-        }
+        ...(adminCreatedNow ? {
+          admin_credentials: {
+            email: adminEmail,
+            password: adminPassword,
+            note: "SAVE THIS PASSWORD SECURELY - it will not be shown again"
+          }
+        } : {})
       }),
       { 
         status: 200, 

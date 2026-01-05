@@ -40,7 +40,7 @@ export const SLOT_TIMES: Record<SlotNumber, string> = {
 // Maximum capacity per slot
 export const MAX_CAPACITY = 7;
 
-// Generate all slots
+// Generate all slots (used for fallback/initialization only)
 export const generateSlots = (): TimeSlot[] => {
   const slots: TimeSlot[] = [];
   DAYS.forEach((day) => {
@@ -51,7 +51,7 @@ export const generateSlots = (): TimeSlot[] => {
         slotNumber,
         time: SLOT_TIMES[slotNumber],
         capacity: MAX_CAPACITY,
-        filled: Math.floor(Math.random() * 5), // Mock data
+        filled: 0, // Default to 0 - real data comes from database
       });
     });
   });

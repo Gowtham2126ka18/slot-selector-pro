@@ -5,7 +5,7 @@ import { useSlotManagement } from '@/hooks/useSlotManagement';
 import Header from '@/components/Header';
 import DepartmentHeadManager from '@/components/DepartmentHeadManager';
 import SectionManager from '@/components/admin/SectionManager';
-import SlotRulesManager from '@/components/admin/SlotRulesManager';
+import SlotRulesInfo from '@/components/admin/SlotRulesInfo';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -545,7 +545,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="rules" className="animate-fade-in">
-            <SlotRulesManager />
+            <SlotRulesInfo />
           </TabsContent>
         </Tabs>
       </main>

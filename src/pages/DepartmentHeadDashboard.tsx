@@ -16,11 +16,15 @@ import { useToast } from '@/hooks/use-toast';
 import {
   TimeSlot,
   SlotSelection,
-  DAYS,
   SLOT_TIMES,
   SlotNumber,
   Day,
 } from '@/lib/slotData';
+import {
+  getAllowedSlot2Options as getAlgoSlot2Options,
+  getMandatorySlot3,
+  getRuleDescription,
+} from '@/lib/slotDependencyRules';
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,6 +35,7 @@ import {
   LogOut,
   Building2,
   Layers,
+  Info,
 } from 'lucide-react';
 
 interface DepartmentInfo {
@@ -39,14 +44,7 @@ interface DepartmentInfo {
   year: string;
 }
 
-interface SlotRule {
-  slot1_day: string;
-  slot1_number: number;
-  slot2_day: string;
-  slot2_number: number;
-  slot3_day: string;
-  slot3_number: number;
-}
+// Slot rules are now fully algorithmic - no database rules needed
 
 const steps = [
   { number: 1, title: 'Section' },
@@ -64,7 +62,6 @@ const DepartmentHeadDashboard = () => {
 
   const [department, setDepartment] = useState<DepartmentInfo | null>(null);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
-  const [slotRules, setSlotRules] = useState<SlotRule[]>([]);
   const [systemLocked, setSystemLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -153,14 +150,7 @@ const DepartmentHeadDashboard = () => {
           setSlots(mappedSlots);
         }
 
-        // Fetch slot dependency rules from database
-        const { data: rulesData } = await supabase
-          .from('slot_dependency_rules')
-          .select('slot1_day, slot1_number, slot2_day, slot2_number, slot3_day, slot3_number');
-
-        if (rulesData) {
-          setSlotRules(rulesData);
-        }
+        // Slot rules are now algorithmic - no database fetch needed
       } catch (error) {
         console.error('Error fetching department info:', error);
       } finally {
@@ -173,68 +163,28 @@ const DepartmentHeadDashboard = () => {
     }
   }, [user, authLoading, navigate, toast, signOut]);
 
-  // Get allowed Slot 2 options based on Slot 1 selection and rules from DB
+  // Get allowed Slot 2 options using algorithmic rules
   const getAllowedSlot2Options = useCallback((slot1Id: string): string[] => {
-    const [day, numStr] = slot1Id.split('-');
-    const slotNum = parseInt(numStr);
+    return getAlgoSlot2Options(slot1Id);
+  }, []);
 
-    // Find all rules that match this Slot 1
-    const matchingRules = slotRules.filter(
-      (r) => r.slot1_day === day && r.slot1_number === slotNum
-    );
-
-    // Get unique Slot 2 options
-    const slot2Options = new Set<string>();
-    matchingRules.forEach((r) => {
-      slot2Options.add(`${r.slot2_day}-${r.slot2_number}`);
-    });
-
-    return Array.from(slot2Options);
-  }, [slotRules]);
-
-  // Get allowed Slot 3 options based on Slot 1 and Slot 2 selection
+  // Get mandatory Slot 3 based on Slot 1 and Slot 2 (algorithmic)
   const getAllowedSlot3Options = useCallback((slot1Id: string, slot2Id: string): string[] => {
-    const [day1, numStr1] = slot1Id.split('-');
-    const slotNum1 = parseInt(numStr1);
-    const [day2, numStr2] = slot2Id.split('-');
-    const slotNum2 = parseInt(numStr2);
-
-    // Find all rules that match this Slot 1 and Slot 2
-    const matchingRules = slotRules.filter(
-      (r) =>
-        r.slot1_day === day1 &&
-        r.slot1_number === slotNum1 &&
-        r.slot2_day === day2 &&
-        r.slot2_number === slotNum2
-    );
-
-    // Get unique Slot 3 options
-    const slot3Options = new Set<string>();
-    matchingRules.forEach((r) => {
-      slot3Options.add(`${r.slot3_day}-${r.slot3_number}`);
-    });
-
-    return Array.from(slot3Options);
-  }, [slotRules]);
+    const slot3 = getMandatorySlot3(slot1Id, slot2Id);
+    return slot3 ? [slot3] : [];
+  }, []);
 
   // Get allowed slots based on dependency rules
   const allowedSlots = useMemo(() => {
-    // Step 2: Slot 1 selection
+    // Step 2: Slot 1 selection - all slots are valid starting points
     if (currentStep === 2) {
-      // Get all unique Slot 1 options from rules
-      const slot1Options = new Set<string>();
-      slotRules.forEach((r) => {
-        slot1Options.add(`${r.slot1_day}-${r.slot1_number}`);
-      });
-      
-      // Filter by availability
-      return Array.from(slot1Options).filter((slotId) => {
-        const slot = slots.find((s) => `${s.day}-${s.slotNumber}` === slotId);
-        return slot && slot.capacity - slot.filled > 0;
-      });
+      // All slots with availability can be selected as Slot 1
+      return slots
+        .filter((s) => s.capacity - s.filled > 0)
+        .map((s) => `${s.day}-${s.slotNumber}`);
     }
 
-    // Step 3: Slot 2 selection
+    // Step 3: Slot 2 selection (algorithmic)
     if (currentStep === 3 && selections.slot1) {
       const allowed = getAllowedSlot2Options(selections.slot1);
       return allowed.filter((slotId) => {
@@ -243,7 +193,7 @@ const DepartmentHeadDashboard = () => {
       });
     }
 
-    // Step 4: Slot 3 selection
+    // Step 4: Slot 3 selection (algorithmic - only one option)
     if (currentStep === 4 && selections.slot1 && selections.slot2) {
       const allowed = getAllowedSlot3Options(selections.slot1, selections.slot2);
       return allowed.filter((slotId) => {
@@ -253,7 +203,7 @@ const DepartmentHeadDashboard = () => {
     }
 
     return [];
-  }, [currentStep, selections, slots, slotRules, getAllowedSlot2Options, getAllowedSlot3Options]);
+  }, [currentStep, selections, slots, getAllowedSlot2Options, getAllowedSlot3Options]);
 
   // Get disabled slots (not in allowed list)
   const disabledSlots = useMemo(() => {
@@ -554,11 +504,12 @@ const DepartmentHeadDashboard = () => {
                   </div>
                 </div>
 
-                {slotRules.length === 0 && (
-                  <Alert className="mb-6 border-destructive/30 bg-destructive/5">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
+                {/* Rule info alert */}
+                {currentStep === 2 && selections.slot1 && (
+                  <Alert className="mb-6 border-primary/30 bg-primary/5">
+                    <Info className="h-4 w-4 text-primary" />
                     <AlertDescription className="text-sm">
-                      <strong>No Rules Configured:</strong> Contact the administrator to set up slot dependency rules before making selections.
+                      <strong>Rule Preview:</strong> {getRuleDescription(selections.slot1)}
                     </AlertDescription>
                   </Alert>
                 )}

@@ -57,29 +57,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse request body
-    const { email, password, department_id } = await req.json();
+    // Parse request body - now supports multiple departments
+    const { email, password, department_id, department_ids } = await req.json();
+    
+    // Support both single department_id (legacy) and multiple department_ids
+    const deptIds: string[] = department_ids || (department_id ? [department_id] : []);
 
-    if (!email || !password || !department_id) {
+    if (!email || !password || deptIds.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: email, password, department_id' }),
+        JSON.stringify({ error: 'Missing required fields: email, password, and at least one department' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if department already has a head
-    const { data: existingHead } = await supabaseAdmin
-      .from('department_head_credentials')
-      .select('id')
-      .eq('department_id', department_id)
-      .maybeSingle();
-
-    if (existingHead) {
-      return new Response(
-        JSON.stringify({ error: 'This department already has a department head assigned' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Use the first department as the primary (for legacy compatibility)
+    const primaryDepartmentId = deptIds[0];
 
     // Create user with admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -104,24 +96,26 @@ Deno.serve(async (req) => {
       .insert({
         user_id: newUser.user.id,
         role: 'department_head',
-        department_id,
+        department_id: primaryDepartmentId,
       });
 
     if (roleError) {
       console.error('Error creating role:', roleError);
     }
 
-    // Create department_head_credentials entry
-    const { error: credError } = await supabaseAdmin
+    // Create department_head_credentials entry with primary department
+    const { data: credential, error: credError } = await supabaseAdmin
       .from('department_head_credentials')
       .insert({
         user_id: newUser.user.id,
-        department_id,
+        department_id: primaryDepartmentId,
         is_enabled: true,
         created_by: requestingUser.id,
-      });
+      })
+      .select('id')
+      .single();
 
-    if (credError) {
+    if (credError || !credential) {
       console.error('Error creating credentials:', credError);
       // Try to clean up the created user
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
@@ -129,6 +123,23 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Unable to complete department head setup. Please try again.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // If there are additional departments, add them to the junction table
+    if (deptIds.length > 1) {
+      const additionalDepts = deptIds.slice(1).map((deptId) => ({
+        credential_id: credential.id,
+        department_id: deptId,
+      }));
+      
+      const { error: junctionError } = await supabaseAdmin
+        .from('department_head_departments')
+        .insert(additionalDepts);
+
+      if (junctionError) {
+        console.error('Error adding additional departments:', junctionError);
+        // Non-fatal - primary department is still assigned
+      }
     }
 
     // Department head created successfully

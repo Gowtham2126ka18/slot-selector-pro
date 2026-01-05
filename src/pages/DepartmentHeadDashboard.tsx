@@ -10,6 +10,13 @@ import SlotGrid from '@/components/SlotGrid';
 import SelectionSummary from '@/components/SelectionSummary';
 import SectionSelector from '@/components/SectionSelector';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -61,6 +68,7 @@ const DepartmentHeadDashboard = () => {
   const { submitSlots, submitting } = useSlotSubmission();
 
   const [department, setDepartment] = useState<DepartmentInfo | null>(null);
+  const [assignedDepartments, setAssignedDepartments] = useState<DepartmentInfo[]>([]);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [systemLocked, setSystemLocked] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -88,11 +96,14 @@ const DepartmentHeadDashboard = () => {
         // Get department head credentials for this user
         const { data: credentials, error: credError } = await supabase
           .from('department_head_credentials')
-          .select(`
+          .select(
+            `
+            id,
             department_id,
             is_enabled,
             departments:department_id (id, name, year)
-          `)
+          `
+          )
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -117,8 +128,35 @@ const DepartmentHeadDashboard = () => {
           return;
         }
 
-        const dept = credentials.departments as unknown as DepartmentInfo;
-        setDepartment(dept);
+        const primaryDept = credentials.departments as unknown as DepartmentInfo;
+
+        // Fetch additional department assignments (multi-department support)
+        const { data: deptLinks, error: deptLinksError } = await supabase
+          .from('department_head_departments')
+          .select('departments:department_id (id, name, year)')
+          .eq('credential_id', credentials.id);
+
+        if (deptLinksError) {
+          console.error('Error fetching department assignments:', deptLinksError);
+        }
+
+        const extraDepts = (deptLinks || [])
+          .map((l: any) => l.departments)
+          .filter(Boolean) as DepartmentInfo[];
+
+        const deptMap = new Map<string, DepartmentInfo>();
+        deptMap.set(primaryDept.id, primaryDept);
+        for (const d of extraDepts) deptMap.set(d.id, d);
+
+        const allDepts = Array.from(deptMap.values()).sort((a, b) =>
+          `${a.year}-${a.name}`.localeCompare(`${b.year}-${b.name}`)
+        );
+
+        setAssignedDepartments(allDepts);
+        setDepartment((prev) => {
+          if (prev && deptMap.has(prev.id)) return prev;
+          return allDepts[0] ?? primaryDept;
+        });
 
         // Check system lock status
         const { data: settings } = await supabase
@@ -435,9 +473,38 @@ const DepartmentHeadDashboard = () => {
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Building2 className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{department.name}</h1>
-              <p className="text-sm text-muted-foreground">{department.year} Department</p>
+            <div className="space-y-2">
+              <div>
+                <h1 className="text-xl font-bold text-foreground">{department.name}</h1>
+                <p className="text-sm text-muted-foreground">{department.year} Department</p>
+              </div>
+
+              {assignedDepartments.length > 1 && (
+                <div className="max-w-xs">
+                  <Select
+                    value={department.id}
+                    onValueChange={(deptId) => {
+                      const next = assignedDepartments.find((d) => d.id === deptId);
+                      if (!next) return;
+                      setDepartment(next);
+                      setCurrentStep(1);
+                      setSelectedSection(null);
+                      setSelections({ slot1: null, slot2: null, slot3: null });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignedDepartments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name} ({d.year})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
           <Button variant="outline" onClick={handleSignOut}>
